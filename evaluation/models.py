@@ -268,13 +268,13 @@ class LanguageModel(Model):
     """
         Generic LM- used most often for target model
     """
-    def __init__(self, config: ExperimentConfig, **kwargs):
+    def __init__(self, config: ExperimentConfig, model_name, **kwargs):
         super().__init__(config, **kwargs)
         self.device = self.config.env_config.device
         self.device_map = self.config.env_config.device_map
         # Use provided name (if provided)
         # Relevant for scoring-model scenario
-        self.name = self.kwargs.get('name', self.config.base_model)
+        self.name = model_name
 
         base_model_kwargs = {}
         # if config.revision:

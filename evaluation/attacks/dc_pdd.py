@@ -35,7 +35,7 @@ class DC_PDDAttack(Attack):
         model_name = model.name
 
         # Load from cache if available, save otherwise
-        cached_file_path = os.path.join(get_cache_path(), "DC_PDD_freq_dis", "C4", f"{model_name}.pt")
+        cached_file_path = os.path.join(get_cache_path(), "DC_PDD_freq_dis", "C4", "fre_dis.pt")
 
         if os.path.exists(cached_file_path):
             self.fre_dis = ch.load(cached_file_path)

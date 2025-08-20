@@ -466,7 +466,7 @@ def main(config: ExperimentConfig):
 
     # === 第二阶段：简化的输出目录管理 ===
     exp_name = config.experiment_name
-    base_model_name = config.base_model.replace("/", "_")
+    base_model_name = config.model_before.replace("/", "_")
     
     # 简化目录结构：实验名/模型名
     sf = os.path.join(exp_name, base_model_name)
@@ -495,26 +495,22 @@ def main(config: ExperimentConfig):
     print("PHASE 1: INITIALIZING BEFORE-TRAINING MODEL AND ATTACKERS")
     print("="*60)
     
-    # 创建训练前模型配置
-    config_before = copy.deepcopy(config)
-    config_before.base_model = getattr(config, 'model_before_path', config.base_model)
-    
     # 加载训练前模型
-    print(f"Loading before-training model: {config_before.base_model}")
-    model_before = LanguageModel(config_before)
+    print(f"Loading before-training model: {config.model_before}")
+    model_before = LanguageModel(config, model_name=config.model_before)
     
     # 加载参考模型（如果需要Reference攻击）
     ref_models_before = None
     if (ref_config is not None and 
         AllAttacks.REFERENCE_BASED in config.blackbox_attacks):
         ref_models_before = {
-            model: ReferenceModel(config_before, model) 
+            model: ReferenceModel(config, model) 
             for model in ref_config.models
         }
     
     # ✅ 优化：一次性创建所有攻击器
     print("Initializing attackers for before-training model...")
-    attackers_dict_before = get_attackers(model_before, ref_models_before, config_before)
+    attackers_dict_before = get_attackers(model_before, ref_models_before, config)
     
     # ✅ 从已创建的攻击器中获取mask_model
     mask_model = None
@@ -569,7 +565,7 @@ def main(config: ExperimentConfig):
         # data_obj_training,
         target_model=model_before,
         ref_models=ref_models_before,
-        config=config_before,
+        config=config,
         # is_train=False,  # 对训练前模型，这些数据是非成员
         n_samples=n_samples,
         nonmember_prefix=nonmember_prefix
@@ -591,26 +587,22 @@ def main(config: ExperimentConfig):
     print("PHASE 4: INITIALIZING AFTER-TRAINING MODEL AND ATTACKERS")
     print("="*60)
     
-    # 创建训练后模型配置
-    config_after = copy.deepcopy(config)
-    config_after.base_model = getattr(config, 'model_after_path', config.base_model)
-    
     # 加载训练后模型
-    print(f"Loading after-training model: {config_after.base_model}")
-    model_after = LanguageModel(config_after)
+    print(f"Loading after-training model: {config.model_after}")
+    model_after = LanguageModel(config, model_name=config.model_after)
     
     # 加载参考模型（如果需要Reference攻击）
     ref_models_after = None
     if (ref_config is not None and 
         AllAttacks.REFERENCE_BASED in config.blackbox_attacks):
         ref_models_after = {
-            model: ReferenceModel(config_after, model) 
+            model: ReferenceModel(config, model) 
             for model in ref_config.models
         }
     
     # ✅ 优化：一次性创建所有攻击器
     print("Initializing attackers for after-training model...")
-    attackers_dict_after = get_attackers(model_after, ref_models_after, config_after)
+    attackers_dict_after = get_attackers(model_after, ref_models_after, config)
 
     # === 第八阶段：训练后模型评估 ===
     print("="*60)
@@ -643,7 +635,7 @@ def main(config: ExperimentConfig):
         # data_obj_training,
         target_model=model_after,
         ref_models=ref_models_after,
-        config=config_after,
+        config=config,
         # is_train=True,  # 对训练后模型，这些数据是成员
         n_samples=n_samples,
         nonmember_prefix=nonmember_prefix_after
@@ -671,8 +663,8 @@ def main(config: ExperimentConfig):
     # if not config.pretokenized:
     raw_data = {
         "training_data": training_data,
-        "before_model": config_before.base_model,
-        "after_model": config_after.base_model,
+        "model_before": config.model_before,
+        "model_after": config.model_after,
     }
     with open(os.path.join(SAVE_FOLDER, "raw_data.json"), "w") as f:
         print(f"Writing raw data to {os.path.join(SAVE_FOLDER, 'raw_data.json')}")

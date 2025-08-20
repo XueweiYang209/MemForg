@@ -117,8 +117,11 @@ class ExperimentConfig(Serializable):
     """
     experiment_name: str
     """Name for the experiment"""
-    base_model: str
-    """Base model name"""
+
+    model_before: str
+    """Name for the model before training"""
+    model_after: str
+    """Name for the model after training"""
 
     dataset: str
     """Dataset source"""
@@ -126,9 +129,6 @@ class ExperimentConfig(Serializable):
     """Filter data by source field (e.g., 'Pile_CC'). If None, load all data."""
     # dataset_nonmember: str
     # """Dataset source for nonmembers"""
-
-    model_before_path: str = None  # 训练前模型路径
-    model_after_path: str = None   # 训练后模型路径
 
     # output_name: str = None
     # """Output name for sub-directory."""
@@ -221,14 +221,14 @@ class ExperimentConfig(Serializable):
     # openai_config: Optional[OpenAIConfig] = None
     # """OpenAI config"""
 
-    def __post_init__(self):
-        # if self.dump_cache and (self.load_from_cache or self.load_from_hf):
-        #     raise ValueError("Cannot dump and load cache at the same time")
+    # def __post_init__(self):
+    #     # if self.dump_cache and (self.load_from_cache or self.load_from_hf):
+    #     #     raise ValueError("Cannot dump and load cache at the same time")
         
-        if self.model_before_path is None:
-            self.model_before_path = self.base_model
-        if self.model_after_path is None:
-            self.model_after_path = self.base_model
+    #     if self.model_before_path is None:
+    #         self.model_before_path = self.base_model
+    #     if self.model_after_path is None:
+    #         self.model_after_path = self.base_model
 
         # if self.neighborhood_config:
         #     if (
