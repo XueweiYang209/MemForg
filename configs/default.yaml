@@ -1,0 +1,24 @@
+model:
+  name: "EleutherAI/pythia-410m"
+  max_length: 512
+
+data:
+  num_samples: 300
+  pile_max_samples: 100000
+  wikimia_split: "WikiMIA_length128"
+  sequence_length: 128
+
+training:
+  batch_size: 4
+  lr: 0.00001
+  epochs: 1
+  nonmember_epochs: 1
+  save_every: 1000
+  gradient_clip: 1.0
+  pile_batch_size: 2000
+
+output:
+  dir: "outputs"
+
+inference:
+  batch_size: 8

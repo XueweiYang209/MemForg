@@ -1,0 +1,61 @@
+{
+    "experiment_name": "pythia_before_after_test",
+    "model_before": "EleutherAI/pythia-410m",
+    "model_after": "RedKiKi/Pythia-mf-410m",
+    
+    "dataset": "RedKiKi/MemForg",
+    "presampled_dataset": null,
+    "dataset_key": "text",
+    
+    "blackbox_attacks": ["loss", "zlib", "min_k", "ne", "recall", "ref", "dc_pdd", "min_k++"],
+    
+    "n_samples": 100,
+    "max_tokens": 512,
+    "min_words": 50,
+    "max_words": 200,
+    "max_words_cutoff": true,
+    "batch_size": 20,
+    "full_doc": false,
+    "max_substrs": 1,
+    "chunk_size": 20,
+    
+    "random_seed": 42,
+    "fpr_list": [0.001, 0.01, 0.1],
+    
+    "scoring_model_name": null,
+    "load_from_hf": false,
+    
+    "env_config": {
+        "cache_dir": "./cache",
+        "data_source": "./pile_data", 
+        "results": "./results",
+        "tmp_results": "./tmp_results",
+        "device": "cuda:0",
+        "device_aux": "cuda:1",
+        "device_map": null,
+        "compile": false,
+        "int8": false,
+        "half": true
+    },
+    
+    "neighborhood_config": {
+        "model": "t5-small",
+        "n_perturbation_list": [1, 10],
+        "span_length": 2,
+        "pct_words_masked": 0.3,
+        "buffer_size": 1,
+        "top_p": 1.0,
+        "max_tries": 100,
+        "pct_swap_bert": 0.05,
+        "original_tokenization_swap": true,
+        "neighbor_strategy": "deterministic"
+    },
+    
+    "ref_config": {
+        "models": ["EleutherAI/pythia-70m"]
+    },
+    
+    "recall_config": {
+        "num_shots": 1
+    }
+}
