@@ -14,10 +14,8 @@ class AllAttacks(str, Enum):
     MIN_K = "min_k"
     MIN_K_PLUS_PLUS = "min_k++"
     NEIGHBOR = "ne"
-    GRADNORM = "gradnorm"
     RECALL = "recall"
     DC_PDD = "dc_pdd" 
-    # QUANTILE = "quantile" # Uncomment when tested implementation is available
 
 
 # Base attack class
@@ -56,16 +54,6 @@ class Attack:
         if not self.is_loaded:
             self.load()
             self.is_loaded = True
-
-        # detokenized_sample = kwargs.get("detokenized_sample", None)
-        # if self.config.pretokenized and detokenized_sample is None:
-        #     raise ValueError("detokenized_sample must be provided")
-
         score = self._attack(document, probs=probs, **kwargs)
-        #     if not self.config.pretokenized
-        #     else self._attack(
-        #         detokenized_sample, tokens=document, probs=probs, **kwargs
-        #     )
-        # )
 
         return score

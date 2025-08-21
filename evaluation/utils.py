@@ -3,8 +3,8 @@ utils.py
 This module provides utility functions.
 
 Environment Variables:
-    CACHE_PATH: The path to the cache directory. This should be set in the environment.
-    DATA_SOURCE: The data source for the project. This should be set in the environment.
+    M_CACHE_PATH: The path to the cache directory. This should be set in the environment.
+    M_DATA_SOURCE: The data source for the project. This should be set in the environment.
 """
 
 import os
@@ -13,8 +13,8 @@ import torch as ch
 import numpy as np
 
 # Read environment variables
-CACHE_PATH = os.environ.get('CACHE_PATH', None)
-DATA_SOURCE = os.environ.get('DATA_SOURCE', None)
+CACHE_PATH = os.environ.get('M_CACHE_PATH', None)
+DATA_SOURCE = os.environ.get('M_DATA_SOURCE', None)
 
 
 def fix_seed(seed: int = 0):
@@ -36,10 +36,10 @@ def get_cache_path():
         str: path to cache directory
 
     Raises:
-        ValueError: If the CACHE_PATH environment variable is not set.
+        ValueError: If the M_CACHE_PATH environment variable is not set.
     """
     if CACHE_PATH is None:
-        raise ValueError('CACHE_PATH environment variable not set')
+        raise ValueError('M_CACHE_PATH environment variable not set')
     return CACHE_PATH
 
 
@@ -50,8 +50,8 @@ def get_data_source():
         str: path to data source directory
 
     Raises:
-        ValueError: If the DATA_SOURCE environment variable is not set.
+        ValueError: If the M_DATA_SOURCE environment variable is not set.
     """
     if DATA_SOURCE is None:
-        raise ValueError('DATA_SOURCE environment variable not set')
+        raise ValueError('M_DATA_SOURCE environment variable not set')
     return DATA_SOURCE

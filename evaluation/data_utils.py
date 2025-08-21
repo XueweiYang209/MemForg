@@ -3,8 +3,6 @@
 """
 import datasets
 import numpy as np
-# import os
-# import evaluation.custom_datasets as custom_datasets
 from evaluation.config import ExperimentConfig
 from nltk.tokenize import WhitespaceTokenizer
 
@@ -16,20 +14,11 @@ class Data:
     def __init__(self, name,
                  config: ExperimentConfig,
                  presampled: str = None,
-                #  name_key_mapping: dict = {"the_pile": "text", "xsum": "document"}
                  ):
-        # self.name_key_mapping = name_key_mapping
         self.config = config
         self.name = name
         self.presampled = presampled
         self.key = config.dataset_key
-        #     if config.dataset_key
-        #     else self.name_key_mapping.get(name, None)
-        # )
-        # if self.key is None:
-        #     raise ValueError(
-        #         f"Key for dataset {name} not provided"
-        #     )
         self.cache_dir = self.config.env_config.cache_dir
 
     def _load_from_huggingface(self):
@@ -37,7 +26,6 @@ class Data:
         try:
             print(f"Loading dataset from HuggingFace: {self.name}")
             
-            # ✅ 简化：直接用self.name作为数据集名称
             dataset = datasets.load_dataset(
                 self.name,
                 split="train",
@@ -46,16 +34,16 @@ class Data:
             
             print(f"Successfully loaded {len(dataset)} samples from HuggingFace")
             
-            # ✅ 按source字段筛选数据（如果配置了）
+            # Filter data by source field (if configured)
             if self.config.source_filter:
                 print(f"Filtering data by source: {self.config.source_filter}")
                 
-                # 检查是否有source字段
+                # Check if source field exists
                 if 'source' not in dataset.column_names:
                     print("Warning: 'source' field not found in dataset, skipping filtering")
                     filtered_data = dataset[self.key]
                 else:
-                    # 筛选指定source的数据
+                    # Filter data for specified source
                     filtered_dataset = dataset.filter(
                         lambda example: example.get('source') == self.config.source_filter
                     )
@@ -69,7 +57,7 @@ class Data:
                     
                     filtered_data = filtered_dataset[self.key]
             else:
-                # 不筛选，使用全部数据
+                # No filtering, use all data
                 print("No source filter specified, using all data")
                 filtered_data = dataset[self.key]
             
@@ -78,90 +66,10 @@ class Data:
         except Exception as e:
             print(f"Failed to load from HuggingFace: {e}")
             return None
-    # def load_neighbors(
-    #     self,
-    #     train: bool,
-    #     num_neighbors: int,
-    #     model: str = "bert",
-    #     in_place_swap: bool = False,
-    # ):
-    #     """
-    #     Load neighbors from cache (local or from HF)
-    #     """
-    #     data_split = "train" if train else "test"
-    #     data_split += "_neighbors"
-    #     filename = self._get_name_to_save() + "_neighbors_{}_{}".format(
-    #         num_neighbors, model
-    #     )
-    #     if in_place_swap:
-    #         filename += "_in_place_swap"
-    #     data = custom_datasets.load_cached(
-    #         self.cache_dir,
-    #         data_split,
-    #         filename,
-    #         min_length=self.config.min_words,
-    #         max_length=self.config.max_words,
-    #         n_samples=self.config.n_samples,
-    #         max_tokens=self.config.max_tokens,
-    #         load_from_hf=self.config.load_from_hf
-    #     )
-    #     return data
 
-    # def dump_neighbors(
-    #     self,
-    #     data,
-    #     train: bool,
-    #     num_neighbors: int,
-    #     model: str = "bert",
-    #     in_place_swap: bool = False,
-    # ):
-    #     """
-    #     Dump neighbors to cache local cache.
-    #     """
-    #     data_split = "train" if train else "test"
-    #     data_split += "_neighbors"
-    #     filename = self._get_name_to_save() + "_neighbors_{}_{}".format(
-    #         num_neighbors, model
-    #     )
-    #     if in_place_swap:
-    #         filename += "_in_place_swap"
-    #     custom_datasets.dump_to_cache(
-    #         data,
-    #         self.cache_dir,
-    #         data_split,
-    #         filename,
-    #         min_length=self.config.min_words,
-    #         max_length=self.config.max_words,
-    #         n_samples=self.config.n_samples,
-    #         max_tokens=self.config.max_tokens,
-    #     )
-
-    def load(self, train: bool, mask_tokenizer=None):
-        data_split = "train" if train else "test"
+    def load(self, mask_tokenizer=None):
         n_samples = self.config.n_samples
 
-        # Load from numpy file storing pretokenized sample in a 2d array of shape (num_samples, num_tokens_per_sample)
-        # if self.config.pretokenized:
-        #     assert self.presampled
-        #     # TODO: Pretokenized full documents (split into substrs) is not currently supported
-        #     assert not self.config.full_doc
-        #     data = np.load(self.presampled)
-        #     return data
-        # elif (self.config.load_from_cache or self.config.load_from_hf):
-        #     # Load from cache, if requested
-        #     filename = self._get_name_to_save()
-        #     data = custom_datasets.load_cached(
-        #         self.cache_dir,
-        #         data_split,
-        #         filename,
-        #         min_length=self.config.min_words,
-        #         max_length=self.config.max_words,
-        #         n_samples=self.config.n_samples,
-        #         max_tokens=self.config.max_tokens,
-        #         load_from_hf=self.config.load_from_hf
-        #     )
-        #     return data
-        
         if self.presampled or self.config.full_doc:
             print("using presampled data")
             data = datasets.load_dataset(
@@ -170,35 +78,6 @@ class Data:
                 split=f"train",
                 cache_dir=self.cache_dir,
             )[self.key]
-        # elif self.name in custom_datasets.DATASETS:
-        #     data = custom_datasets.load(self.name)
-        # elif self.name == "the_pile":
-        #     min_load = max(10000, self.config.max_data)
-        #     data = datasets.load_dataset(
-        #         "json",
-        #         data_files=os.path.join(
-        #             self.config.env_config.data_source,
-        #             "pile/00.jsonl.zst" if train else "pile/test.jsonl.zst",
-        #         ),
-        #         cache_dir=self.cache_dir,
-        #         split=f"train[:{min_load}]",
-        #     )
-        #     specific_source_use = (
-        #         self.config.specific_source
-        #         if specific_source is None
-        #         else specific_source
-        #     )
-        #     data = pile_selection_utility(
-        #         data, self.key, wanted_source=specific_source_use
-        #     )
-        # elif "human" in self.name:
-        #     data = datasets.load_dataset(
-        #         self.name, split=f"train[:100]", cache_dir=self.cache_dir
-        #     )[self.key]
-        # elif "nthngdy" in self.name:
-        #     data = datasets.load_dataset(
-        #         self.name, split="test", cache_dir=self.cache_dir
-        #     )[self.key]
         else:
             print("Loading data from HuggingFace")
             data = self._load_from_huggingface()
@@ -243,10 +122,6 @@ class Data:
                 if len(data) == 0:
                     raise ValueError("No examples with length < max_words")
 
-            # TODO: why shuffle
-            # random.seed(0)
-            # random.shuffle(data)
-
             data = data[: self.config.max_data]
 
             # If there is mask tokenizer, keep only examples with <= 512 tokens according to mask_tokenizer
@@ -288,34 +163,9 @@ class Data:
         # Sample 'n_samples' examples
         data = data[:n_samples]
 
-        # Save to cache (if requested)
-        # if self.config.dump_cache:
-        #     self.dump_to_cache(data, data_split)
-
         return data
 
-    # def dump_to_cache(self, data, data_split):
-    #     filename = self._get_name_to_save()
-    #     custom_datasets.dump_to_cache(
-    #         data,
-    #         self.cache_dir,
-    #         data_split,
-    #         filename,
-    #         min_length=self.config.min_words,
-    #         max_length=self.config.max_words,
-    #         n_samples=self.config.n_samples,
-    #         max_tokens=self.config.max_tokens,
-    #     )
-
-    # def _get_name_to_save(self):
-    #     if self.config.specific_source and self.name == "the_pile":
-    #         processed_source = sourcename_process(self.config.specific_source)
-    #         filename = f"{self.name}_{processed_source}"
-    #     else:
-    #         filename = self.name
-    #     return filename
-
-
+ 
 def strip_newlines(text):
     """
     Strip newlines from each example; replace one or more newlines with a single space

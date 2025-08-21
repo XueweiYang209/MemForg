@@ -26,11 +26,6 @@ class NeighborhoodConfig(Serializable):
     """Mask-filling model"""
     n_perturbation_list: List[int] = field(default_factory=lambda: [1, 10])
     """List of n_neighbors to try."""
-    # dump_cache: Optional[bool] = False
-    # "Dump neighbors data to cache? Exits program after dumping"
-    # load_from_cache: Optional[bool] = False
-    # """Load neighbors data from cache?"""
-    # BERT-specific param
     original_tokenization_swap: Optional[bool] = True
     """Swap out token in original text with neighbor token, instead of re-generating text"""
     pct_swap_bert: Optional[float] = 0.05
@@ -54,10 +49,6 @@ class NeighborhoodConfig(Serializable):
     """Maximum number of trials in finding replacements for masked tokens"""
     ceil_pct: Optional[bool] = False
     """Apply ceil operation on span length calculation?"""
-
-    # def __post_init__(self):
-    #     if self.dump_cache and self.load_from_cache:
-    #         raise ValueError("Cannot dump and load cache at the same time")
 
 @dataclass
 class ReCaLLConfig(Serializable):
@@ -98,18 +89,6 @@ class EnvironmentConfig(Serializable):
         if self.data_source is None:
             self.data_source = get_data_source()
 
-
-# @dataclass
-# class OpenAIConfig(Serializable):
-#     """
-#     Config for OpenAI calls
-#     """
-#     key: str
-#     """OpenAI API key"""
-#     model: str
-#     """Model name"""
-
-
 @dataclass
 class ExperimentConfig(Serializable):
     """
@@ -127,42 +106,16 @@ class ExperimentConfig(Serializable):
     """Dataset source"""
     source_filter: Optional[str] = None
     """Filter data by source field (e.g., 'Pile_CC'). If None, load all data."""
-    # dataset_nonmember: str
-    # """Dataset source for nonmembers"""
-
-    # output_name: str = None
-    # """Output name for sub-directory."""
-    # dataset_nonmember_other_sources: Optional[List[str]] = field(
-    #     default_factory=lambda: None
-    # )
-    # """Dataset sources for nonmembers for which metrics will be computed, using the thresholds derived from the main member/nonmember datasets"""
-    # revision: Optional[str] = None
-    # """Model revision to use"""
     presampled_dataset: Optional[str] = None
     """Path to presampled dataset source"""
-    # presampled_dataset_nonmember: Optional[str] = None
-    # """Path to presampled dataset source for non-members"""
-    # token_frequency_map: Optional[
-    #     str
-    # ] = None  # TODO: Handling auxiliary data structures
-    # """Path to a pre-computed token frequency map"""
-
     dataset_key: Optional[str] = "text"
     """Dataset key"""
-    # specific_source: Optional[str] = None
-    # """Specific sub-source to focus on. Only valid for the_pile"""
+
+    full_doc: Optional[bool] = False
+    """Determines whether MIA will be performed over entire doc or not"""
     max_substrs: Optional[int] = 20
     """If full_doc, determines the maximum number of sample substrs to evaluate on"""
-    # pretokenized: Optional[bool] = False
-    # """Is the data already pretokenized"""
-
-
-    full_doc: Optional[bool] = False  # TODO: refactor full_doc design?
-    """Determines whether MIA will be performed over entire doc or not"""
     
-    # dump_cache: Optional[bool] = False
-    # """Dump data to cache? Exits program after dumping"""
-    # load_from_cache: Optional[bool] = False
     """Load data from cache?"""
     load_from_hf: Optional[bool] = True
     """Load data from HuggingFace?"""
@@ -192,20 +145,6 @@ class ExperimentConfig(Serializable):
     """Chunk size"""
     scoring_model_name: Optional[str] = None
     """Scoring model (if different from base model)"""
-    # top_k: Optional[int] = 40
-    # """Consider only top-k tokens"""
-    # do_top_k: Optional[bool] = False
-    # """Use top-k sampling?"""
-    # top_p: Optional[float] = 0.96
-    # """Use tokens (minimal set) with cumulative probability of <=top_p"""
-    # do_top_p: Optional[bool] = False
-    # """Use top-p sampling?"""
-    # pre_perturb_pct: Optional[float] = 0.0
-    # """Percentage of tokens to perturb before attack"""
-    # pre_perturb_span_length: Optional[int] = 5
-    # """Span length for pre-perturbation"""
-    # tok_by_tok: Optional[bool] = False
-    # """Process data token-wise?"""
     fpr_list: Optional[List[float]] = field(default_factory=lambda: [0.001, 0.01])
     """FPRs at which to compute TPR"""
     random_seed: Optional[int] = 0
@@ -218,26 +157,4 @@ class ExperimentConfig(Serializable):
     """Neighborhood attack config"""
     env_config: Optional[EnvironmentConfig] = None
     """Environment config"""
-    # openai_config: Optional[OpenAIConfig] = None
-    # """OpenAI config"""
-
-    # def __post_init__(self):
-    #     # if self.dump_cache and (self.load_from_cache or self.load_from_hf):
-    #     #     raise ValueError("Cannot dump and load cache at the same time")
-        
-    #     if self.model_before_path is None:
-    #         self.model_before_path = self.base_model
-    #     if self.model_after_path is None:
-    #         self.model_after_path = self.base_model
-
-        # if self.neighborhood_config:
-        #     if (
-        #         self.neighborhood_config.dump_cache
-        #         or self.neighborhood_config.load_from_cache
-        #     ) and not (self.load_from_cache or self.dump_cache or self.load_from_hf):
-        #         raise ValueError(
-        #             "Using dump/load for neighborhood cache without dumping/loading main cache does not make sense"
-        #         )
-
-        #     if self.neighborhood_config.dump_cache and (self.neighborhood_config.load_from_cache or self.load_from_hf):
-        #         raise ValueError("Cannot dump and load neighborhood cache at the same time")    
+    

@@ -6,7 +6,6 @@ from evaluation.attacks.zlib import ZLIBAttack
 from evaluation.attacks.min_k import MinKProbAttack
 from evaluation.attacks.min_k_plus_plus import MinKPlusPlusAttack
 from evaluation.attacks.neighborhood import NeighborhoodAttack
-from evaluation.attacks.gradnorm import GradNormAttack
 from evaluation.attacks.recall import ReCaLLAttack
 from evaluation.attacks.dc_pdd import DC_PDDAttack
 
@@ -20,7 +19,6 @@ def get_attacker(attack: str):
         AllAttacks.MIN_K: MinKProbAttack,
         AllAttacks.MIN_K_PLUS_PLUS: MinKPlusPlusAttack,
         AllAttacks.NEIGHBOR: NeighborhoodAttack,
-        AllAttacks.GRADNORM: GradNormAttack,
         AllAttacks.RECALL: ReCaLLAttack,
         AllAttacks.DC_PDD: DC_PDDAttack
     }

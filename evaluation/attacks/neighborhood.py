@@ -41,8 +41,6 @@ class NeighborhoodAttack(Attack):
         """
         neigh_config = self.config.neighborhood_config
         if "t5" in neigh_config.model and neigh_config.random_fills:
-            # if not self.config.pretokenized:
-            #     # TODO: maybe can be done if detokenized, but currently not supported
             self.ref_model.create_fill_dictionary(data)
 
     def _pick_neighbor_model(self):
@@ -86,8 +84,6 @@ class NeighborhoodAttack(Attack):
             mask_model = BertModel(self.config)
         else:
             raise ValueError(f"Unknown model {neigh_config.model}")
-        # if config.dataset in ['english', 'german']:
-        #     preproc_tokenizer = mask_tokenizer
         return mask_model
 
     def load(self):
@@ -453,8 +449,6 @@ class BertModel(MaskFillingModel):
 
             for cand, prob in zip(top_candidates[0], top_probabilities[0]):
                 if not cand == target_token:
-                    # alt = torch.cat((text_tokenized[:,:target_token_index], torch.LongTensor([cand]).unsqueeze(0).to(device), text_tokenized[:,target_token_index+1:]), dim=1)
-                    # alt_text = search_tokenizer.batch_decode(alt)[0]
                     if original_prob.item() == 1:
                         replacements[(target_token_index, cand)] = prob.item() / (
                             1 - 0.9
@@ -500,7 +494,6 @@ class BertModel(MaskFillingModel):
                     alt_text = self.tokenizer.batch_decode(alt)[0]
                     # Remove [CLS] and [SEP] tokens
                     alt_text = alt_text.replace("[CLS]", "").replace("[SEP]", "")
-                    # texts.append((alt_text, replacements[single]))
                 neighbors.append(alt_text)
 
         elif self.config.neighborhood_config.neighbor_strategy == "random":

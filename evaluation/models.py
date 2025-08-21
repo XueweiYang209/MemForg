@@ -3,20 +3,15 @@
 """
 import torch
 import torch.nn as nn
-# import openai
 from typing import List
 import numpy as np
 import transformers
 import time
 from collections import defaultdict
-# from multiprocessing.pool import ThreadPool
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-# from hf_olmo import *
 
 from evaluation.config import ExperimentConfig
-from evaluation.custom_datasets import SEPARATOR
-# from evaluation.data_utils import drop_last_word
 
 
 class Model(nn.Module):
@@ -50,7 +45,6 @@ class Model(nn.Module):
                 self.model.cpu()
             except NameError:
                 pass
-            # if self.config.openai_config is None:
             self.model.to(self.device, non_blocking=True)
             if self.config.env_config.compile:
                 torch.compile(self.model)
@@ -144,7 +138,6 @@ class Model(nn.Module):
     @torch.no_grad()
     def get_ll(self,
                text: str,
-            #    tokens: np.ndarray=None,
                probs = None):
         """
             Get the log likelihood of each text under the base_model.
@@ -164,23 +157,19 @@ class Model(nn.Module):
         if self.device is None or self.name is None:
             raise ValueError("Please set self.device and self.name in child class")
 
-        # if self.config.openai_config is None:
         print(f'Loading BASE model {self.name}...')
         
-        # 简化的模型加载 - 只支持Pythia和标准transformers模型
+        # Simplified model loading - only supports Pythia and standard transformers models
         model = transformers.AutoModelForCausalLM.from_pretrained(
             self.name, 
             **model_kwargs, 
             device_map=self.device_map, 
             cache_dir=self.cache_dir
         )
-        # else:
-        #     model = None
 
-        # 简化的tokenizer配置
         optional_tok_kwargs = {}
         
-        # Pythia使用标准AutoTokenizer
+        # Pythia uses standard AutoTokenizer
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             self.name, 
             **optional_tok_kwargs, 
@@ -194,9 +183,6 @@ class Model(nn.Module):
         """
             Load model properties, such as max length and stride.
         """
-        # TODO: getting max_length of input could be more generic
-        # if "silo" in self.name or "balanced" in self.name:
-        #     self.max_length = self.model.model.seq_len
         if hasattr(self.model.config, 'max_position_embeddings'):
             self.max_length = self.model.config.max_position_embeddings
         elif hasattr(self.model.config, 'n_positions'):
@@ -216,33 +202,9 @@ class ReferenceModel(Model):
         self.device = self.config.env_config.device_aux
         self.name = name
         base_model_kwargs = {'revision': 'main'}
-        # if 'gpt-j' in self.name or 'neox' in self.name or 'llama' in self.name or 'alpaca' in self.name:
-        #     base_model_kwargs.update(dict(torch_dtype=torch.float16))
-        # if 'gpt-j' in self.name:
-        #     base_model_kwargs.update(dict(revision='float16'))
-        # if ':' in self.name:
-        #     print("Applying ref model revision")
-        #     # Allow them to provide revisions as part of model name, then parse accordingly
-        #     split = self.name.split(':')
-        #     self.name = split[0]
-        #     base_model_kwargs.update(dict(revision=split[-1]))
         self.model, self.tokenizer = self.load_base_model_and_tokenizer(
             model_kwargs=base_model_kwargs)
         self.load_model_properties()
-
-    # def load(self):
-    #     """
-    #     Load reference model noto GPU(s)
-    #     """
-    #     if "llama" not in self.name and "alpaca" not in self.name:
-    #         super().load()
-
-    # def unload(self):
-    #     """
-    #     Unload reference model from GPU(s)
-    #     """
-    #     if "llama" not in self.name and "alpaca" not in self.name:
-    #         super().unload()
 
 
 class QuantileReferenceModel(Model):
@@ -277,12 +239,6 @@ class LanguageModel(Model):
         self.name = model_name
 
         base_model_kwargs = {}
-        # if config.revision:
-        #     base_model_kwargs.update(dict(revision=config.revision))
-        # if 'gpt-j' in self.name or 'neox' in self.name:
-        #     base_model_kwargs.update(dict(torch_dtype=torch.float16))
-        # if 'gpt-j' in self.name:
-        #     base_model_kwargs.update(dict(revision='float16'))
         self.model, self.tokenizer = self.load_base_model_and_tokenizer(
             model_kwargs=base_model_kwargs)
         self.load_model_properties()
@@ -302,8 +258,6 @@ class LanguageModel(Model):
         """
             Get the average rank of each observed token sorted by model likelihood
         """
-        # openai_config = self.config.openai_config
-        # assert openai_config is None, "get_rank not implemented for OpenAI models"
 
         tokenized = self.tokenizer(text, return_tensors="pt").to(self.device)
         logits = self.model(**tokenized).logits[:,:-1]
@@ -325,12 +279,8 @@ class LanguageModel(Model):
 
         return ranks.float().mean().item()
 
-    # TODO extend for longer sequences
     @torch.no_grad()
     def get_lls(self, texts: List[str], batch_size: int = 6):
-        #return [self.get_ll(text) for text in texts] # -np.mean([self.get_ll(text) for text in texts])
-        # tokenized = self.tokenizer(texts, return_tensors="pt", padding=True)
-        # labels = tokenized.input_ids
         total_size = len(texts)
         losses = []
         for i in range(0, total_size, batch_size):
@@ -388,53 +338,11 @@ class LanguageModel(Model):
             del attention_mask
         return losses #np.mean(losses)
 
-    # def sample_from_model(self, texts: List[str], **kwargs):
-    #     """
-    #         Sample from base_model using ****only**** the first 30 tokens in each example as context
-    #     """
-    #     min_words = kwargs.get('min_words', 55)
-    #     max_words = kwargs.get('max_words', 200)
-    #     prompt_tokens = kwargs.get('prompt_tokens', 30)
-
-    #     # encode each text as a list of token ids
-    #     if self.config.dataset == 'pubmed':
-    #         texts = [t[:t.index(SEPARATOR)] for t in texts]
-    #         all_encoded = self.tokenizer(texts, return_tensors="pt", padding=True).to(self.device, non_blocking=True)
-    #     else:
-    #         all_encoded = self.tokenizer(texts, return_tensors="pt", padding=True).to(self.device, non_blocking=True)
-    #         all_encoded = {key: value[:, :prompt_tokens] for key, value in all_encoded.items()}
-
-    #     decoded = ['' for _ in range(len(texts))]
-
-    #     # sample from the model until we get a sample with at least min_words words for each example
-    #     # this is an inefficient way to do this (since we regenerate for all inputs if just one is too short), but it works
-    #     tries = 0
-    #     while (m := min(len(x.split()) for x in decoded)) < min_words and tries <  self.config.neighborhood_config.top_p:
-    #         if tries != 0:
-    #             print()
-    #             print(f"min words: {m}, needed {min_words}, regenerating (try {tries})")
-
-    #         sampling_kwargs = {}
-    #         if self.config.do_top_p:
-    #             sampling_kwargs['top_p'] = self.config.top_p
-    #         elif self.config.do_top_k:
-    #             sampling_kwargs['top_k'] = self.config.top_k
-    #         #min_length = 50 if config.dataset in ['pubmed'] else 150
-
-    #         #outputs = base_model.generate(**all_encoded, min_length=min_length, max_length=max_length, do_sample=True, **sampling_kwargs, pad_token_id=base_tokenizer.eos_token_id, eos_token_id=base_tokenizer.eos_token_id)
-    #         #removed minlen and attention mask min_length=min_length, max_length=200, do_sample=True,pad_token_id=base_tokenizer.eos_token_id,
-    #         outputs = self.model.generate(**all_encoded, min_length=min_words*2, max_length=max_words*3,  **sampling_kwargs,  eos_token_id=self.tokenizer.eos_token_id)
-    #         decoded = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
-    #         tries += 1
-
-    #     return decoded
-
     @torch.no_grad()
     def get_entropy(self, text: str):
         """
             Get average entropy of each token in the text
         """
-        # raise NotImplementedError("get_entropy not implemented for OpenAI models")
         
         tokenized = self.tokenizer(text, return_tensors="pt").to(self.device)
         logits = self.model(**tokenized).logits[:,:-1]
@@ -443,7 +351,6 @@ class LanguageModel(Model):
     
     @torch.no_grad()
     def get_max_norm(self, text: str, context_len=None, tk_freq_map=None):
-        # TODO: update like other attacks
         tokenized = self.tokenizer(
             text, return_tensors="pt").to(self.device)
         labels = tokenized.input_ids
@@ -462,7 +369,6 @@ class LanguageModel(Model):
             outputs = self.model(input_ids, labels=target_ids)
             logits = outputs.logits
             # Shift so that tokens < n predict n
-            # print(logits.shape)
             shift_logits = logits[..., :-1, :].contiguous()
             # shift_logits = torch.transpose(shift_logits, 1, 2)
             probabilities = torch.nn.functional.log_softmax(shift_logits, dim=-1)
@@ -482,113 +388,3 @@ class LanguageModel(Model):
         # Should be equal to # of tokens - 1 to account for shift
         assert len(all_prob) == labels.size(1) - 1
         return -np.mean(all_prob)
-
-
-# class OpenAI_APIModel(LanguageModel):
-#     """
-#         Wrapper for OpenAI API calls
-#     """
-#     def __init__(self, config: ExperimentConfig, **kwargs):
-#         super().__init__(config, **kwargs)
-#         self.model = None
-#         self.tokenizer = transformers.GPT2Tokenizer.from_pretrained('gpt2', cache_dir=self.cache_dir)
-#         self.API_TOKEN_COUNTER = 0
-    
-#     @property
-#     def api_calls(self):
-#         """
-#             Get the number of tokens used in API calls
-#         """
-#         return self.API_TOKEN_COUNTER
-
-#     @torch.no_grad()
-#     def get_ll(self, text: str):
-#         """
-#             Get the log likelihood of each text under the base_model
-#         """
-#         openai_config = self.config.openai_config
-
-#         kwargs = {"engine": openai_config.model, "temperature": 0, "max_tokens": 0, "echo": True, "logprobs": 0}
-#         r = openai.Completion.create(prompt=f"<|endoftext|>{text}", **kwargs)
-#         result = r['choices'][0]
-#         tokens, logprobs = result["logprobs"]["tokens"][1:], result["logprobs"]["token_logprobs"][1:]
-
-#         assert len(tokens) == len(logprobs), f"Expected {len(tokens)} logprobs, got {len(logprobs)}"
-
-#         return np.mean(logprobs)
-
-#     @torch.no_grad()
-#     def get_ref(self, text: str, ref_model: ReferenceModel):
-#         """
-#             Get the  likelihood ratio of each text under the base_model -- MIA baseline
-#         """
-#         raise NotImplementedError("OpenAI model not implemented for LIRA")
-#         openai_config = self.config.openai_config
-#         kwargs = {"engine": openai_config.model, "temperature": 0,
-#                     "max_tokens": 0, "echo": True, "logprobs": 0}
-#         r = openai.Completion.create(prompt=f"<|endoftext|>{text}", **kwargs)
-#         result = r['choices'][0]
-#         tokens, logprobs = result["logprobs"]["tokens"][1:], result["logprobs"]["token_logprobs"][1:]
-
-#         assert len(tokens) == len(logprobs), f"Expected {len(tokens)} logprobs, got {len(logprobs)}"
-
-#         return np.mean(logprobs)
-
-#     def get_lls(self, texts: str):
-
-#         # use GPT2_TOKENIZER to get total number of tokens
-#         total_tokens = sum(len(self.tokenizer.encode(text)) for text in texts)
-#         self.API_TOKEN_COUNTER += total_tokens * 2  # multiply by two because OpenAI double-counts echo_prompt tokens
-
-#         pool = ThreadPool(self.config.batch_size)
-#         return pool.map(self.get_ll, texts)
-
-#     def _openai_sample(self, p: str):
-#         openai_config = self.config.openai_config
-#         if self.config.dataset != 'pubmed':  # keep Answer: prefix for pubmed
-#             p = drop_last_word(p)
-
-#         # sample from the openai model
-#         kwargs = { "engine": openai_config.model, "max_tokens": 200 }
-#         if self.config.do_top_p:
-#             kwargs['top_p'] = self.config.top_p
-    
-#         r = openai.Completion.create(prompt=f"{p}", **kwargs)
-#         return p + r['choices'][0].text
-
-
-#     def sample_from_model(self, texts: List[str], **kwargs):
-#         """
-#             Sample from base_model using ****only**** the first 30 tokens in each example as context
-#         """
-#         prompt_tokens = kwargs.get('prompt_tokens', 30)
-#         base_tokenizer = kwargs.get('base_tokenizer', None)
-#         if base_tokenizer is None:
-#             raise ValueError("Please provide base_tokenizer")
-
-#         # encode each text as a list of token ids
-#         if self.config.dataset == 'pubmed':
-#             texts = [t[:t.index(SEPARATOR)] for t in texts]
-#             all_encoded = base_tokenizer(texts, return_tensors="pt", padding=True).to(self.device)
-#         else:
-#             all_encoded = base_tokenizer(texts, return_tensors="pt", padding=True).to(self.device)
-#             all_encoded = {key: value[:, :prompt_tokens] for key, value in all_encoded.items()}
-
-#         # decode the prefixes back into text
-#         prefixes = base_tokenizer.batch_decode(all_encoded['input_ids'], skip_special_tokens=True)
-#         pool = ThreadPool(self.config.batch_size)
-
-#         decoded = pool.map(self._openai_sample, prefixes)
-
-#         # count total number of tokens with GPT2_TOKENIZER
-#         total_tokens = sum(len(self.tokenizer.encode(x)) for x in decoded)
-#         self.API_TOKEN_COUNTER += total_tokens
-
-#         return decoded
-    
-#     @torch.no_grad()
-#     def get_entropy(self, text: str):
-#         """
-#             Get average entropy of each token in the text
-#         """
-#         raise NotImplementedError("get_entropy not implemented for OpenAI models")
