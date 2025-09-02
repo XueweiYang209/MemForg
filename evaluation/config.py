@@ -55,7 +55,7 @@ class ReCaLLConfig(Serializable):
     """
     Config for ReCaLL attack
     """
-    num_shots: Optional[int] = 1
+    num_shots: Optional[int] = 5
     """Number of shots for ReCaLL Attacks"""
 
 @dataclass
@@ -63,10 +63,10 @@ class EnvironmentConfig(Serializable):
     """
     Config for environment-specific parameters
     """
-    cache_dir: Optional[str] = None
+    cache_dir: str
     """Path to cache directory"""
-    data_source: Optional[str] = None
-    """Path where data is stored"""
+    # data_source: Optional[str] = None
+    # """Path where data is stored"""
     device: Optional[str] = 'cuda:0'
     """Device (GPU) to load main model on"""
     device_map: Optional[str] = None
@@ -83,11 +83,11 @@ class EnvironmentConfig(Serializable):
     """Path for saving final results"""
     tmp_results: Optional[str] = "tmp_results"
 
-    def __post_init__(self):
-        if self.cache_dir is None:
-            self.cache_dir = get_cache_path()
-        if self.data_source is None:
-            self.data_source = get_data_source()
+    # def __post_init__(self):
+    #     if self.cache_dir is None:
+    #         self.cache_dir = get_cache_path()
+    #     if self.data_source is None:
+    #         self.data_source = get_data_source()
 
 @dataclass
 class ExperimentConfig(Serializable):

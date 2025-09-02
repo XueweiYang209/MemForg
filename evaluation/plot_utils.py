@@ -30,10 +30,7 @@ def save_roc_curves(experiments, save_folder, model_name, neighbor_model_name: s
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    if neighbor_model_name:
-        plt.title(f'ROC Curves ({model_name} - {neighbor_model_name})')
-    else:
-        plt.title(f'ROC Curves ({model_name})')
+    plt.title(f'ROC Curves ({model_name})')
     plt.legend(loc="lower right", fontsize=6)
     plt.savefig(f"{save_folder}/roc_curves.png")
 
@@ -49,10 +46,7 @@ def save_roc_curves(experiments, save_folder, model_name, neighbor_model_name: s
     plt.plot([1e-5, 1], [1e-5, 1], color='black', lw=2, linestyle='--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    if neighbor_model_name:
-        plt.title(f'ROC Curves ({model_name} - {neighbor_model_name}) : low FPR region')
-    else:
-        plt.title(f'ROC Curves ({model_name} : low FPR region')
+    plt.title(f'ROC Curves ({model_name} : low FPR region')
     plt.legend(loc="lower right", fontsize=6)
     plt.savefig(f"{save_folder}/roc_curves_low_fpr.png")
 

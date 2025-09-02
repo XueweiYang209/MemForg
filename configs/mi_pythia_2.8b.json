@@ -1,15 +1,16 @@
 {
-    "experiment_name": "pythia_before_after_test",
-    "model_before": "EleutherAI/pythia-410m",
-    "model_after": "RedKiKi/Pythia-mf-410m",
+    "experiment_name": "pythia_2.8b_test",
+    "model_before": "EleutherAI/pythia-2.8b",
+    "model_after": "RedKiKi/Pythia-mf-2.8b",
     
     "dataset": "RedKiKi/MemForg",
+    "source_filter": "Pile-CC",
     "presampled_dataset": null,
     "dataset_key": "text",
     
-    "blackbox_attacks": ["loss", "zlib", "min_k", "ne", "recall", "ref", "dc_pdd", "min_k++"],
+    "blackbox_attacks": ["loss", "ref", "dc_pdd", "zlib", "min_k", "min_k++", "ne", "recall", "con_recall"],
     
-    "n_samples": 100,
+    "n_samples": 1500,
     "max_tokens": 512,
     "min_words": 50,
     "max_words": 200,
@@ -26,12 +27,11 @@
     "load_from_hf": false,
     
     "env_config": {
-        "cache_dir": "./cache",
-        "data_source": "./pile_data", 
+        "cache_dir": "/mnt/data/yxw25/cache/huggingface/hub",
         "results": "./results",
         "tmp_results": "./tmp_results",
-        "device": "cuda:0",
-        "device_aux": "cuda:1",
+        "device": "cuda:4",
+        "device_aux": "cuda:5",
         "device_map": null,
         "compile": false,
         "int8": false,
@@ -40,7 +40,7 @@
     
     "neighborhood_config": {
         "model": "t5-small",
-        "n_perturbation_list": [1, 10],
+        "n_perturbation_list": [10],
         "span_length": 2,
         "pct_words_masked": 0.3,
         "buffer_size": 1,

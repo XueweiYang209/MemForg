@@ -1,5 +1,5 @@
 model:
-  name: "EleutherAI/pythia-410m"
+  name: "EleutherAI/pythia-2.8b"
   max_length: 512
 
 data:
@@ -9,13 +9,42 @@ data:
   sequence_length: 128
 
 training:
-  batch_size: 4
+  batch_size: 1                    # 每个GPU的micro batch size
   lr: 0.00001
   epochs: 1
   nonmember_epochs: 1
   save_every: 1000
   gradient_clip: 1.0
   pile_batch_size: 2000
+
+# ✅ 简化的DeepSpeed ZeRO-2配置
+deepspeed:
+  # === 基础配置 ===
+  train_micro_batch_size_per_gpu: 4      # 每个GPU的micro batch大小
+  gradient_accumulation_steps: 1          # 梯度累积步数
+  
+  # === 优化器配置 ===
+  optimizer:
+    type: "AdamW"
+    params:
+      lr: 0.00001                         # 学习率
+      weight_decay: 0.01                  # 权重衰减
+  
+  # === 混合精度训练 ===
+  fp16:
+    enabled: true                         # 启用FP16节省显存
+  
+  # === ZeRO-2核心配置 ===
+  zero_optimization:
+    stage: 2                              # ZeRO-2：分片梯度+优化器状态
+    overlap_comm: true                    # 重叠通信和计算提升效率
+    contiguous_gradients: true            # 减少内存碎片
+  
+  # === 梯度裁剪 ===
+  gradient_clipping: 1.0                  # 梯度裁剪阈值
+
+  debug:
+    enabled: true                        # 启用调试模式
 
 output:
   dir: "outputs"

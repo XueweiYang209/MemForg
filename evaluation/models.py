@@ -148,7 +148,7 @@ class Model(nn.Module):
                 are used instead of calling the `get_probabilities` method. Defaults to None.
         """
         all_prob = probs if probs is not None else self.get_probabilities(text)
-        return -np.mean(all_prob)
+        return np.mean(all_prob)
 
     def load_base_model_and_tokenizer(self, model_kwargs):
         """
@@ -330,13 +330,12 @@ class LanguageModel(Model):
                 del input_ids
                 del mask
             
-            # average over each sample to get losses
-            batch_losses = [-np.mean(all_prob[idx]) for idx in range(label_batch.size(0))]
-            # print(batch_losses)
+            # average over each sample to get log-likelihood
+            batch_losses = [np.mean(all_prob[idx]) for idx in range(label_batch.size(0))]
             losses.extend(batch_losses)
             del label_batch
             del attention_mask
-        return losses #np.mean(losses)
+        return losses
 
     @torch.no_grad()
     def get_entropy(self, text: str):

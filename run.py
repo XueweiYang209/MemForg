@@ -107,12 +107,29 @@ def get_mia_scores(
                                     desc="Neighbor attacks", 
                                     position=1)
 
+    # ReCaLL攻击准备
     recall_config = config.recall_config
-    if recall_config:
+    recall_dict = None
+    if recall_config and AllAttacks.RECALL in attackers_dict:
         nonmember_prefix = kwargs.get("nonmember_prefix", None)
         num_shots = recall_config.num_shots
         avg_length = int(np.mean([len(target_model.tokenizer.encode(ex)) for ex in data["records"]]))
-        recall_dict = {"prefix":nonmember_prefix, "num_shots":num_shots, "avg_length":avg_length}
+        recall_dict = {"prefix": nonmember_prefix, "num_shots": num_shots, "avg_length": avg_length}
+
+
+    # Con-ReCaLL攻击准备
+    con_recall_dict = None
+    if recall_config and AllAttacks.CON_RECALL in attackers_dict:
+        member_prefix = kwargs.get("member_prefix", None)
+        nonmember_prefix = kwargs.get("nonmember_prefix", None)
+        num_shots = recall_config.num_shots
+        avg_length = int(np.mean([len(target_model.tokenizer.encode(ex)) for ex in data["records"]]))
+        con_recall_dict = {
+            "member_prefix": member_prefix, 
+            "nonmember_prefix": nonmember_prefix, 
+            "num_shots": num_shots, 
+            "avg_length": avg_length
+        }
 
     # For each batch of data
     # TODO: Batch-size isn't really "batching" data - change later
@@ -154,6 +171,15 @@ def get_mia_scores(
                         )
                         sample_information[attack].append(score)
 
+                    elif attack == AllAttacks.CON_RECALL:
+                        score = attacker.attack(
+                            substr,
+                            probs=s_tk_probs,
+                            loss=loss,
+                            all_probs=s_all_probs,
+                            con_recall_dict=con_recall_dict
+                        )
+                        sample_information[attack].append(score)
 
                     elif attack != AllAttacks.NEIGHBOR:
                         score = attacker.attack(
@@ -178,8 +204,11 @@ def get_mia_scores(
                                 substr_neighbors=substr_neighbors,
                             )
 
+                            # sample_information[
+                            #     f"{attack}-{n_perturbation}"
+                            # ].append(score)
                             sample_information[
-                                f"{attack}-{n_perturbation}"
+                                f"{attack}"
                             ].append(score)
 
                             # Update global progress bar
@@ -223,8 +252,7 @@ def get_mia_scores(
         samples.append(r["sample"])
         for attack, scores in r.items():
             if attack != "sample" and attack != "detokenized":
-                # TODO: Is there a reason for the np.min here?
-                predictions[attack].append(np.min(scores))
+                predictions[attack].append(np.mean(scores))
 
     return predictions, samples
 
@@ -232,8 +260,6 @@ def get_mia_scores(
 def compute_metrics_from_scores(
         preds_member: dict,
         preds_nonmember: dict,
-        samples_member: List,
-        samples_nonmember: List,
         n_samples: int):
 
     attack_keys = list(preds_member.keys())
@@ -265,17 +291,13 @@ def compute_metrics_from_scores(
             f"{attack}_threshold ROC AUC: {roc_auc}, PR AUC: {pr_auc}, tpr_at_low_fpr: {tpr_at_low_fpr}"
         )
         blackbox_attack_outputs[attack] = {
-            "name": f"{attack}_threshold",
+            "name": f"{attack}",
             "predictions": {
                 "member": preds_member_,
                 "nonmember": preds_nonmember_,
             },
             "info": {
                 "n_samples": n_samples,
-            },
-            "raw_results": {
-                "member": samples_member,
-                "nonmember": samples_nonmember,
             },
             "metrics": {
                 "roc_auc": roc_auc,
@@ -306,6 +328,20 @@ def generate_data(
     data = data_obj.load(mask_tokenizer=mask_model_tokenizer)
     return data
 
+def generate_prefix_data(
+    dataset: str,
+    member_type: str,
+    presampled: str = None
+):
+    data_obj = data_utils.Data(
+        dataset, 
+        config=config, 
+        presampled=presampled,
+        split="prefix_data"
+    )
+    data = data_obj.load(member_filter=member_type)
+    return data
+
 
 def main(config: ExperimentConfig):
     """
@@ -320,8 +356,9 @@ def main(config: ExperimentConfig):
     # === Output directory management ===
     exp_name = config.experiment_name
     base_model_name = config.model_before.replace("/", "_")
+    source_filter = config.source_filter
     
-    sf = os.path.join(exp_name, base_model_name)
+    sf = os.path.join(exp_name, base_model_name, source_filter) if source_filter else os.path.join(exp_name, base_model_name)
     SAVE_FOLDER = os.path.join(env_config.tmp_results, sf)
     new_folder = os.path.join(env_config.results, sf)
     
@@ -336,11 +373,11 @@ def main(config: ExperimentConfig):
     print(f"Saving results to absolute path: {os.path.abspath(SAVE_FOLDER)}")
 
     # === Cache and environment preparation ===
-    cache_dir = env_config.cache_dir
-    print(f"Using cache dir: {cache_dir}")
-    os.environ["XDG_CACHE_HOME"] = cache_dir
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
+    # cache_dir = env_config.cache_dir
+    # print(f"Using cache dir: {cache_dir}")
+    # os.environ["XDG_CACHE_HOME"] = cache_dir
+    # if not os.path.exists(cache_dir):
+    #     os.makedirs(cache_dir)
 
     # === Before-training model and attacker initialization ===
     print("="*60)
@@ -391,13 +428,29 @@ def main(config: ExperimentConfig):
     print("Moving before-training model to GPU...")
     model_before.load()
     
-    # ReCaLL attack special preparation
+    # 前缀数据准备
     nonmember_prefix = None
-    if AllAttacks.RECALL in config.blackbox_attacks:
+    member_prefix = None
+    
+    if recall_config and (AllAttacks.RECALL in config.blackbox_attacks or AllAttacks.CON_RECALL in config.blackbox_attacks):
         assert recall_config, "Must provide a recall_config"
         num_shots = recall_config.num_shots
-        # TODO 对于训练前模型，使用训练数据的前几个样本作为非成员前缀
-        nonmember_prefix = training_data[:num_shots]
+        
+        # 准备非成员前缀
+        if AllAttacks.RECALL in config.blackbox_attacks or AllAttacks.CON_RECALL in config.blackbox_attacks:
+            all_nonmember_prefix = generate_prefix_data(
+                dataset=config.dataset,
+                member_type="non_member"
+            )
+            nonmember_prefix = all_nonmember_prefix[:num_shots]
+        
+        # 准备成员前缀（仅Con-ReCaLL需要）
+        if AllAttacks.CON_RECALL in config.blackbox_attacks:
+            all_member_prefix = generate_prefix_data(
+                dataset=config.dataset,
+                member_type="member"
+            )
+            member_prefix = all_member_prefix[:num_shots]
     
     # Process data format
     data_before = {"member": training_data}
@@ -416,7 +469,8 @@ def main(config: ExperimentConfig):
         ref_models=ref_models_before,
         config=config,
         n_samples=n_samples,
-        nonmember_prefix=nonmember_prefix
+        nonmember_prefix=nonmember_prefix,
+        member_prefix=member_prefix
     )
     
     # Release before-training model resources
@@ -460,13 +514,6 @@ def main(config: ExperimentConfig):
     print("Moving after-training model to GPU...")
     model_after.load()
     
-    # ReCaLL attack special preparation (for after-training model)
-    nonmember_prefix_after = None
-    if AllAttacks.RECALL in config.blackbox_attacks:
-        # TODO 对于训练后模型，我们可能需要不同的非成员前缀
-        # 这里简化处理，使用相同的前缀
-        nonmember_prefix_after = nonmember_prefix
-    
     # Process data format
     data_after = {"member": training_data}  # For after-training model, these are real members
     
@@ -483,7 +530,8 @@ def main(config: ExperimentConfig):
         ref_models=ref_models_after,
         config=config,
         n_samples=n_samples,
-        nonmember_prefix=nonmember_prefix_after
+        nonmember_prefix=nonmember_prefix,
+        member_prefix=member_prefix
     )
     
     # === Compute comparison metrics ===
@@ -494,8 +542,6 @@ def main(config: ExperimentConfig):
     blackbox_outputs = compute_metrics_from_scores(
         member_preds,      # After-training model scores (members)
         nonmember_preds,   # Before-training model scores (non-members)
-        member_samples,
-        nonmember_samples,
         n_samples=n_samples,
     )
     

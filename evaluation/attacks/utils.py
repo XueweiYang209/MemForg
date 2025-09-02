@@ -7,6 +7,7 @@ from evaluation.attacks.min_k import MinKProbAttack
 from evaluation.attacks.min_k_plus_plus import MinKPlusPlusAttack
 from evaluation.attacks.neighborhood import NeighborhoodAttack
 from evaluation.attacks.recall import ReCaLLAttack
+from evaluation.attacks.con_recall import ConReCaLLAttack
 from evaluation.attacks.dc_pdd import DC_PDDAttack
 
 
@@ -20,6 +21,7 @@ def get_attacker(attack: str):
         AllAttacks.MIN_K_PLUS_PLUS: MinKPlusPlusAttack,
         AllAttacks.NEIGHBOR: NeighborhoodAttack,
         AllAttacks.RECALL: ReCaLLAttack,
+        AllAttacks.CON_RECALL: ConReCaLLAttack,
         AllAttacks.DC_PDD: DC_PDDAttack
     }
     attack_cls = mapping.get(attack, None)

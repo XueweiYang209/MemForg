@@ -35,4 +35,4 @@ class MinKProbAttack(Attack):
             ngram_probs.append(np.mean(ngram_prob))
         min_k_probs = sorted(ngram_probs)[: int(len(ngram_probs) * k)]
 
-        return -np.mean(min_k_probs)
+        return np.mean(min_k_probs)

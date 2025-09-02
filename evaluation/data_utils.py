@@ -14,60 +14,73 @@ class Data:
     def __init__(self, name,
                  config: ExperimentConfig,
                  presampled: str = None,
+                 split: str = "target_data"
                  ):
         self.config = config
         self.name = name
         self.presampled = presampled
         self.key = config.dataset_key
         self.cache_dir = self.config.env_config.cache_dir
+        self.split = split
 
-    def _load_from_huggingface(self):
-        """从HuggingFace加载数据并按source筛选"""
+    def _load_from_huggingface(self, member_filter=None):
+        """从HuggingFace加载数据并按source和/或membership筛选
+        
+        Args:
+            member_filter: 仅对prefix_data有效，'member'/'non_member'/None
+        """
         try:
-            print(f"Loading dataset from HuggingFace: {self.name}")
+            print(f"Loading dataset from HuggingFace: {self.name}, split: {self.split}")
             
             dataset = datasets.load_dataset(
                 self.name,
-                split="train",
+                split=self.split,
                 cache_dir=self.cache_dir,
             )
             
             print(f"Successfully loaded {len(dataset)} samples from HuggingFace")
             
-            # Filter data by source field (if configured)
-            if self.config.source_filter:
-                print(f"Filtering data by source: {self.config.source_filter}")
+            # 对于prefix_data split，member_filter不能为空
+            if self.split == "prefix_data":
+                if member_filter is None:
+                    raise ValueError("member_filter cannot be None when loading prefix_data")
                 
-                # Check if source field exists
-                if 'source' not in dataset.column_names:
-                    print("Warning: 'source' field not found in dataset, skipping filtering")
-                    filtered_data = dataset[self.key]
-                else:
-                    # Filter data for specified source
-                    filtered_dataset = dataset.filter(
-                        lambda example: example.get('source') == self.config.source_filter
-                    )
-                    print(f"After filtering: {len(filtered_dataset)} samples")
-                    
-                    if len(filtered_dataset) == 0:
-                        print(f"Warning: No data found for source '{self.config.source_filter}'")
-                        available_sources = set(dataset['source']) if 'source' in dataset.column_names else set()
-                        print(f"Available sources: {available_sources}")
-                        return None
-                    
-                    filtered_data = filtered_dataset[self.key]
+                # 先按membership过滤
+                if 'is_member' not in dataset.column_names:
+                    print("Warning: 'is_member' field not found in prefix_data")
+                    return []
+                
+                filtered_dataset = dataset.filter(
+                    lambda example: example.get('is_member') == member_filter
+                )
+                
+                # 再按source过滤（如果配置了source_filter）
+                if self.config.source_filter:
+                    if 'source' in filtered_dataset.column_names:
+                        filtered_dataset = filtered_dataset.filter(
+                            lambda example: example.get('source') == self.config.source_filter
+                        )
+                filtered_data = filtered_dataset[self.key]
+                
+            # 对于target_data split，只按source过滤
             else:
-                # No filtering, use all data
-                print("No source filter specified, using all data")
-                filtered_data = dataset[self.key]
+                if self.config.source_filter:
+                    if 'source' in dataset.column_names:
+                        filtered_dataset = dataset.filter(
+                            lambda example: example.get('source') == self.config.source_filter
+                        )
+                    filtered_data = filtered_dataset[self.key]
+                else:
+                    filtered_data = dataset[self.key]
             
+            print(f"{self.split} filtered down to {len(filtered_data)} samples after applying filters")
             return filtered_data
         
         except Exception as e:
             print(f"Failed to load from HuggingFace: {e}")
-            return None
+            return []
 
-    def load(self, mask_tokenizer=None):
+    def load(self, mask_tokenizer=None, member_filter=None):
         n_samples = self.config.n_samples
 
         if self.presampled or self.config.full_doc:
@@ -80,7 +93,22 @@ class Data:
             )[self.key]
         else:
             print("Loading data from HuggingFace")
-            data = self._load_from_huggingface()
+            data = self._load_from_huggingface(member_filter=member_filter)
+
+        if self.split == "prefix_data":
+            if not self.config.full_doc:
+                wsp_tokenizer = WhitespaceTokenizer()
+                # 对每个前缀进行长度截断
+                processed_data = []
+                for text in data:
+                    word_spans = list(wsp_tokenizer.span_tokenize(text))
+                    if len(word_spans) > self.config.max_words:
+                        # 截断到max_words个词
+                        last_span = word_spans[self.config.max_words - 1]
+                        text = text[:last_span[1]]
+                    processed_data.append(text)
+                data = processed_data
+            return data
 
         if not self.config.full_doc:
             # get unique examples
@@ -159,6 +187,8 @@ class Data:
 
             if n_samples > len(data):
                 print(f"WARNING: n_samples ({n_samples}) > len(data) ({len(data)})")
+                n_samples = len(data)
+                print(f"Setting n_samples to {n_samples}")
 
         # Sample 'n_samples' examples
         data = data[:n_samples]

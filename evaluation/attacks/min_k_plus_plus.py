@@ -35,4 +35,4 @@ class MinKPlusPlusAttack(Attack):
         sigma = (ch.exp(all_probs) * ch.square(all_probs)).sum(-1) - ch.square(mu)
         scores = (np.array(target_prob) - mu.numpy()) / sigma.sqrt().numpy()
         
-        return -np.mean(sorted(scores)[:int(len(scores) * k)])
+        return np.mean(sorted(scores)[:int(len(scores) * k)])

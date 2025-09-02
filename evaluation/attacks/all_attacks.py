@@ -15,6 +15,7 @@ class AllAttacks(str, Enum):
     MIN_K_PLUS_PLUS = "min_k++"
     NEIGHBOR = "ne"
     RECALL = "recall"
+    CON_RECALL = "con_recall"
     DC_PDD = "dc_pdd" 
 
 
